@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON 键值对比工具</title>
+  <!-- 引入外部资源 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- Tailwind配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            accent: '#8B5CF6',
+            danger: '#EF4444',
+            dark: '#1E293B',
+            light: '#F8FAFC',
+            glass: 'rgba(255, 255, 255, 0.15)',
+            glassDark: 'rgba(15, 23, 42, 0.7)'
+          },
+          fontFamily: {
+            inter: ['Inter', 'sans-serif'],
+          },
+          boxShadow: {
+            'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.18)',
+          }
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .glass-effect {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      .glass-effect-dark {
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .text-gradient {
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+      }
+      .transition-all-300 {
+        transition: all 300ms ease-in-out;
+      }
+      .scale-hover {
+        transition: transform 0.3s ease;
+      }
+      .scale-hover:hover {
+        transform: scale(1.03);
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen font-inter text-light bg-dark overflow-x-hidden">
+  <!-- 背景图容器 -->
+  <div id="background-container" class="fixed inset-0 z-0">
+    <div id="background-image" class="absolute inset-0 bg-cover bg-center opacity-30 blur-sm transition-all duration-500" style="background-image: url('https://picsum.photos/id/1/1920/1080');"></div>
+    <div class="absolute inset-0 bg-gradient-to-b from-dark/80 to-dark/95"></div>
+    <img src="assets/images/local-background.png" alt="背景图" class="w-full h-full object-cover opacity-30 blur-sm">
+  </div>
+  
+  <!-- 主容器 -->
+  <div class="relative z-10 container mx-auto px-4 py-8 max-w-7xl">
+    <!-- 标题区域 -->
+    <header class="text-center mb-10">
+      <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-gradient bg-gradient-to-r from-primary to-secondary mb-4">
+        JSON 键值对比工具
+      </h1>
+      <p class="text-blue-100/80 max-w-2xl mx-auto text-lg">
+        上传 zh_cn.json 和 en_us.json 文件，自动对比键值配对情况，检测不匹配项并格式化文件内容
+      </p>
+    </header>
+    
+    <!-- 文件上传区域 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+      <!-- 中文JSON上传区 -->
+      <div id="zh-upload-area" class="glass-effect-dark rounded-xl p-6 border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all-300 group">
+        <div class="flex flex-col items-center justify-center py-10 text-center">
+          <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary/30 transition-all-300">
+            <i class="fa fa-file-code-o text-2xl text-primary"></i>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">中文 JSON 文件</h3>
+          <p class="text-blue-100/70 mb-6">zh_cn.json</p>
+          <label class="cursor-pointer bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg transition-all-300 font-medium inline-flex items-center gap-2 scale-hover">
+            <i class="fa fa-upload"></i>
+            <span>选择文件</span>
+            <input type="file" id="zh-file-upload" accept=".json" class="hidden">
+          </label>
+          <p class="mt-4 text-sm text-blue-100/60">或拖放文件到此处</p>
+          
+          <div id="zh-file-info" class="hidden mt-6 w-full">
+            <div class="glass-effect rounded-lg p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <i class="fa fa-file-text-o text-blue-300"></i>
+                <span id="zh-file-name" class="truncate max-w-[200px]"></span>
+              </div>
+              <button id="remove-zh-file" class="text-red-400 hover:text-red-300 transition-all-300 scale-hover">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 英文JSON上传区域 -->
+      <div id="en-upload-area" class="glass-effect-dark rounded-xl p-6 border-2 border-dashed border-secondary/30 hover:border-secondary/60 transition-all-300 group">
+        <div class="flex flex-col items-center justify-center py-10 text-center">
+          <div class="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center mb-4 group-hover:bg-secondary/30 transition-all-300">
+            <i class="fa fa-file-code-o text-2xl text-secondary"></i>
+          </div>
+          <h3 class="text-xl font-semibold mb-2">英文 JSON 文件</h3>
+          <p class="text-green-100/70 mb-6">en_us.json</p>
+          <label class="cursor-pointer bg-secondary hover:bg-secondary/90 text-white px-6 py-3 rounded-lg transition-all-300 font-medium inline-flex items-center gap-2 scale-hover">
+            <i class="fa fa-upload"></i>
+            <span>选择文件</span>
+            <input type="file" id="en-file-upload" accept=".json" class="hidden">
+          </label>
+          <p class="mt-4 text-sm text-green-100/60">或拖放文件到此处</p>
+          
+          <div id="en-file-info" class="hidden mt-6 w-full">
+            <div class="glass-effect rounded-lg p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <i class="fa fa-file-text-o text-green-300"></i>
+                <span id="en-file-name" class="truncate max-w-[200px]"></span>
+              </div>
+              <button id="remove-en-file" class="text-red-400 hover:text-red-300 transition-all-300 scale-hover">
+                <i class="fa fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 操作按钮区域 -->
+    <div class="flex flex-wrap justify-center gap-4 mb-10">
+      <button id="compare-btn" class="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white px-8 py-4 rounded-lg transition-all-300 font-medium text-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed scale-hover" disabled>
+        <i class="fa fa-exchange"></i>
+        <span>开始对比</span>
+      </button>
+      <button id="format-btn" class="glass-effect hover:bg-white/20 text-white px-8 py-4 rounded-lg transition-all-300 font-medium text-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed scale-hover" disabled>
+        <i class="fa fa-indent"></i>
+        <span>格式化文件</span>
+      </button>
+      <button id="clear-btn" class="glass-effect hover:bg-white/20 text-white px-8 py-4 rounded-lg transition-all-300 font-medium text-lg flex items-center gap-2 scale-hover">
+        <i class="fa fa-trash"></i>
+        <span>清空所有</span>
+      </button>
+    </div>
+    
+    <!-- 错误提示区域 -->
+    <div id="error-container" class="hidden mb-8">
+      <div class="glass-effect-dark border border-danger/50 rounded-xl p-6">
+        <h3 class="text-danger text-xl font-semibold mb-4 flex items-center gap-2">
+          <i class="fa fa-exclamation-triangle"></i>
+          <span>检测到不匹配项</span>
+        </h3>
+        <div id="error-list" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+          <!-- 错误项将在这里动态添加 -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- 结果显示区域 -->
+    <div id="results-container" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 hidden">
+      <!-- 中文JSON结果 -->
+      <div class="glass-effect-dark rounded-xl overflow-hidden">
+        <div class="bg-blue-900/30 px-6 py-4 flex justify-between items-center border-b border-blue-500/20">
+          <h3 class="font-semibold text-lg text-blue-300 flex items-center gap-2">
+            <i class="fa fa-file-text-o"></i>
+            <span>zh_cn.json 内容</span>
+          </h3>
+          <button class="copy-btn text-blue-300 hover:text-blue-200 transition-all-300 px-3 py-1 rounded flex items-center gap-1 scale-hover" data-target="zh-json-content">
+            <i class="fa fa-copy text-sm"></i>
+            <span class="text-sm">复制</span>
+          </button>
+        </div>
+        <div class="p-0">
+          <pre id="zh-json-content" class="text-sm md:text-base p-6 overflow-x-auto max-h-[600px] text-blue-100 bg-blue-950/30"></pre>
+        </div>
+      </div>
+      
+      <!-- 英文JSON结果 -->
+      <div class="glass-effect-dark rounded-xl overflow-hidden">
+        <div class="bg-green-900/30 px-6 py-4 flex justify-between items-center border-b border-green-500/20">
+          <h3 class="font-semibold text-lg text-green-300 flex items-center gap-2">
+            <i class="fa fa-file-text-o"></i>
+            <span>en_us.json 内容</span>
+          </h3>
+          <button class="copy-btn text-green-300 hover:text-green-200 transition-all-300 px-3 py-1 rounded flex items-center gap-1 scale-hover" data-target="en-json-content">
+            <i class="fa fa-copy text-sm"></i>
+            <span class="text-sm">复制</span>
+          </button>
+        </div>
+        <div class="p-0">
+          <pre id="en-json-content" class="text-sm md:text-base p-6 overflow-x-auto max-h-[600px] text-green-100 bg-green-950/30"></pre>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 下载区域 -->
+    <div id="download-container" class="flex flex-wrap justify-center gap-4 mb-12 hidden">
+      <button id="download-zh-btn" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg transition-all-300 font-medium flex items-center gap-2 scale-hover">
+        <i class="fa fa-download"></i>
+        <span>下载格式化的 zh_cn.json</span>
+      </button>
+      <button id="download-en-btn" class="bg-secondary hover:bg-secondary/90 text-white px-6 py-3 rounded-lg transition-all-300 font-medium flex items-center gap-2 scale-hover">
+        <i class="fa fa-download"></i>
+        <span>下载格式化的 en_us.json</span>
+      </button>
+    </div>
+    
+    <!-- 页脚 -->
+    <footer class="text-center text-blue-100/60 text-sm py-6 border-t border-white/10">
+      <p>JSON 键值对比工具 &copy; 2025 | 栖拓工坊所有 CC BY-NC 4.0许可协议</p>
+    </footer>
+  </div>
+  
+  <!-- 通知提示 -->
+  <div id="notification" class="fixed bottom-6 right-6 px-6 py-3 rounded-lg glass-effect-dark transform translate-y-20 opacity-0 transition-all-300 z-50 flex items-center gap-2">
+    <i id="notification-icon" class="fa fa-check text-emerald-400"></i>
+    <span id="notification-text">操作成功</span>
+  </div>
+
+  <script>
+    // 全局变量存储文件内容
+    let zhFileContent = null;
+    let enFileContent = null;
+    let zhJsonData = null;
+    let enJsonData = null;
+    let formattedZh = null;
+    let formattedEn = null;
+    
+    // DOM 元素
+    const zhFileUpload = document.getElementById('zh-file-upload');
+    const enFileUpload = document.getElementById('en-file-upload');
+    const zhFileInfo = document.getElementById('zh-file-info');
+    const enFileInfo = document.getElementById('en-file-info');
+    const zhFileName = document.getElementById('zh-file-name');
+    const enFileName = document.getElementById('en-file-name');
+    const removeZhFile = document.getElementById('remove-zh-file');
+    const removeEnFile = document.getElementById('remove-en-file');
+    const compareBtn = document.getElementById('compare-btn');
+    const formatBtn = document.getElementById('format-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const errorContainer = document.getElementById('error-container');
+    const errorList = document.getElementById('error-list');
+    const resultsContainer = document.getElementById('results-container');
+    const zhJsonContent = document.getElementById('zh-json-content');
+    const enJsonContent = document.getElementById('en-json-content');
+    const downloadZhBtn = document.getElementById('download-zh-btn');
+    const downloadEnBtn = document.getElementById('download-en-btn');
+    const downloadContainer = document.getElementById('download-container');
+    const copyBtns = document.querySelectorAll('.copy-btn');
+    const notification = document.getElementById('notification');
+    const notificationIcon = document.getElementById('notification-icon');
+    const notificationText = document.getElementById('notification-text');
+    const zhUploadArea = document.getElementById('zh-upload-area');
+    const enUploadArea = document.getElementById('en-upload-area');
+    
+    // 初始化拖放功能
+    function initDragDrop() {
+      // 中文文件拖放区域
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        zhUploadArea.addEventListener(eventName, preventDefaults, false);
+        enUploadArea.addEventListener(eventName, preventDefaults, false);
+      });
+      
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      ['dragenter', 'dragover'].forEach(eventName => {
+        zhUploadArea.addEventListener(eventName, highlightZh, false);
+        enUploadArea.addEventListener(eventName, highlightEn, false);
+      });
+      
+      ['dragleave', 'drop'].forEach(eventName => {
+        zhUploadArea.addEventListener(eventName, unhighlightZh, false);
+        enUploadArea.addEventListener(eventName, unhighlightEn, false);
+      });
+      
+      function highlightZh() {
+        zhUploadArea.classList.add('border-primary');
+        zhUploadArea.classList.add('bg-blue-900/20');
+      }
+      
+      function unhighlightZh() {
+        zhUploadArea.classList.remove('border-primary');
+        zhUploadArea.classList.remove('bg-blue-900/20');
+      }
+      
+      function highlightEn() {
+        enUploadArea.classList.add('border-secondary');
+        enUploadArea.classList.add('bg-green-900/20');
+      }
+      
+      function unhighlightEn() {
+        enUploadArea.classList.remove('border-secondary');
+        enUploadArea.classList.remove('bg-green-900/20');
+      }
+      
+      zhUploadArea.addEventListener('drop', handleZhDrop, false);
+      enUploadArea.addEventListener('drop', handleEnDrop, false);
+      
+      function handleZhDrop(e) {
+        const dt = e.dataTransfer;
+        const file = dt.files[0];
+        if (file && file.name.endsWith('.json')) {
+          handleZhFile(file);
+        } else {
+          showNotification('请上传JSON文件', 'error');
+        }
+      }
+      
+      function handleEnDrop(e) {
+        const dt = e.dataTransfer;
+        const file = dt.files[0];
+        if (file && file.name.endsWith('.json')) {
+          handleEnFile(file);
+        } else {
+          showNotification('请上传JSON文件', 'error');
+        }
+      }
+    }
+    
+    // 处理文件上传
+    zhFileUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleZhFile(file);
+      }
+    });
+    
+    enFileUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleEnFile(file);
+      }
+    });
+    
+    // 处理中文文件
+    function handleZhFile(file) {
+      zhFileName.textContent = file.name;
+      zhFileInfo.classList.remove('hidden');
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          zhFileContent = e.target.result;
+          zhJsonData = JSON.parse(zhFileContent);
+          showNotification(`已加载 ${file.name}`, 'success');
+          updateButtonStates();
+        } catch (error) {
+          showNotification('中文JSON文件解析错误', 'error');
+          console.error('JSON解析错误:', error);
+          zhFileContent = null;
+          zhJsonData = null;
+          zhFileInfo.classList.add('hidden');
+          updateButtonStates();
+        }
+      };
+      reader.readAsText(file);
+    }
+    
+    // 处理英文文件
+    function handleEnFile(file) {
+      enFileName.textContent = file.name;
+      enFileInfo.classList.remove('hidden');
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          enFileContent = e.target.result;
+          enJsonData = JSON.parse(enFileContent);
+          showNotification(`已加载 ${file.name}`, 'success');
+          updateButtonStates();
+        } catch (error) {
+          showNotification('英文JSON文件解析错误', 'error');
+          console.error('JSON解析错误:', error);
+          enFileContent = null;
+          enJsonData = null;
+          enFileInfo.classList.add('hidden');
+          updateButtonStates();
+        }
+      };
+      reader.readAsText(file);
+    }
+    
+    // 移除文件
+    removeZhFile.addEventListener('click', () => {
+      zhFileContent = null;
+      zhJsonData = null;
+      zhFileInfo.classList.add('hidden');
+      zhFileUpload.value = '';
+      updateButtonStates();
+      showNotification('已移除中文JSON文件', 'info');
+    });
+    
+    removeEnFile.addEventListener('click', () => {
+      enFileContent = null;
+      enJsonData = null;
+      enFileInfo.classList.add('hidden');
+      enFileUpload.value = '';
+      updateButtonStates();
+      showNotification('已移除英文JSON文件', 'info');
+    });
+    
+    // 清空所有
+    clearBtn.addEventListener('click', () => {
+      zhFileContent = null;
+      zhJsonData = null;
+      enFileContent = null;
+      enJsonData = null;
+      zhFileInfo.classList.add('hidden');
+      enFileInfo.classList.add('hidden');
+      zhFileUpload.value = '';
+      enFileUpload.value = '';
+      errorContainer.classList.add('hidden');
+      resultsContainer.classList.add('hidden');
+      downloadContainer.classList.add('hidden');
+      errorList.innerHTML = '';
+      updateButtonStates();
+      showNotification('已清空所有内容', 'info');
+    });
+    
+    // 更新按钮状态
+    function updateButtonStates() {
+      const bothFilesLoaded = !!zhJsonData && !!enJsonData;
+      compareBtn.disabled = !bothFilesLoaded;
+      formatBtn.disabled = !bothFilesLoaded;
+    }
+    
+    // 对比JSON键值对
+    compareBtn.addEventListener('click', () => {
+      if (!zhJsonData || !enJsonData) return;
+      
+      // 清空之前的错误
+      errorList.innerHTML = '';
+      errorContainer.classList.add('hidden');
+      
+      // 获取所有键
+      const zhKeys = Object.keys(zhJsonData);
+      const enKeys = Object.keys(enJsonData);
+      
+      const allKeys = [...new Set([...zhKeys, ...enKeys])];
+      let hasErrors = false;
+      
+      // 检查键是否匹配
+      allKeys.forEach(key => {
+        const zhHasKey = zhKeys.includes(key);
+        const enHasKey = enKeys.includes(key);
+        
+        if (!zhHasKey || !enHasKey) {
+          hasErrors = true;
+          const errorItem = document.createElement('div');
+          errorItem.className = 'p-3 bg-red-900/20 border border-red-500/30 rounded-lg';
+          
+          if (!zhHasKey) {
+            errorItem.innerHTML = `
+              <p class="font-medium text-red-300">键 "${key}" 不存在于 zh_cn.json 中</p>
+            `;
+          } else if (!enHasKey) {
+            errorItem.innerHTML = `
+              <p class="font-medium text-red-300">键 "${key}" 不存在于 en_us.json 中</p>
+            `;
+          }
+          
+          errorList.appendChild(errorItem);
+        }
+      });
+      
+      // 显示错误（如果有）
+      if (hasErrors) {
+        errorContainer.classList.remove('hidden');
+      } else {
+        showNotification('所有键值对匹配成功', 'success');
+      }
+      
+      // 格式化并显示内容
+      formatJsonFiles();
+      
+      // 显示结果
+      resultsContainer.classList.remove('hidden');
+      downloadContainer.classList.remove('hidden');
+    });
+    
+    // 格式化JSON文件
+    formatBtn.addEventListener('click', () => {
+      if (!zhJsonData || !enJsonData) return;
+      
+      formatJsonFiles();
+      
+      // 显示结果
+      resultsContainer.classList.remove('hidden');
+      downloadContainer.classList.remove('hidden');
+      
+      showNotification('文件已格式化', 'success');
+    });
+    
+    // 格式化JSON文件内容
+    function formatJsonFiles() {
+      formattedZh = JSON.stringify(zhJsonData, null, 2);
+      formattedEn = JSON.stringify(enJsonData, null, 2);
+      
+      zhJsonContent.textContent = formattedZh;
+      enJsonContent.textContent = formattedEn;
+    }
+    
+    // 下载格式化的文件
+    downloadZhBtn.addEventListener('click', () => {
+      if (!formattedZh) return;
+      
+      downloadFile(formattedZh, 'zh_cn.json', 'application/json');
+      showNotification('zh_cn.json 已下载', 'success');
+    });
+    
+    downloadEnBtn.addEventListener('click', () => {
+      if (!formattedEn) return;
+      
+      downloadFile(formattedEn, 'en_us.json', 'application/json');
+      showNotification('en_us.json 已下载', 'success');
+    });
+    
+    // 下载文件工具函数
+    function downloadFile(content, filename, contentType) {
+      const blob = new Blob([content], { type: contentType });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      
+      // 清理
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+    
+    // 复制到剪贴板
+    copyBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const targetElement = document.getElementById(targetId);
+        const textToCopy = targetElement.textContent;
+        
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          showNotification('内容已复制到剪贴板', 'success');
+        }).catch(err => {
+          showNotification('复制失败，请手动复制', 'error');
+          console.error('复制失败:', err);
+        });
+      });
+    });
+    
+    // 显示通知
+    function showNotification(message, type = 'info') {
+      // 设置通知类型样式
+      switch(type) {
+        case 'success':
+          notificationIcon.className = 'fa fa-check text-emerald-400';
+          notification.className = 'fixed bottom-6 right-6 px-6 py-3 rounded-lg glass-effect-dark transform translate-y-20 opacity-0 transition-all-300 z-50 flex items-center gap-2 bg-emerald-900/40 border border-emerald-500/30';
+          break;
+        case 'error':
+          notificationIcon.className = 'fa fa-times text-red-400';
+          notification.className = 'fixed bottom-6 right-6 px-6 py-3 rounded-lg glass-effect-dark transform translate-y-20 opacity-0 transition-all-300 z-50 flex items-center gap-2 bg-red-900/40 border border-red-500/30';
+          break;
+        case 'info':
+        default:
+          notificationIcon.className = 'fa fa-info text-blue-400';
+          notification.className = 'fixed bottom-6 right-6 px-6 py-3 rounded-lg glass-effect-dark transform translate-y-20 opacity-0 transition-all-300 z-50 flex items-center gap-2 bg-blue-900/40 border border-blue-500/30';
+          break;
+      }
+      
+      notificationText.textContent = message;
+      
+      // 显示通知
+      setTimeout(() => {
+        notification.classList.remove('translate-y-20', 'opacity-0');
+        notification.classList.add('translate-y-0', 'opacity-100');
+      }, 10);
+      
+      // 3秒后隐藏通知
+      setTimeout(() => {
+        notification.classList.remove('translate-y-0', 'opacity-100');
+        notification.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+    
+    // 初始化
+    function init() {
+      initDragDrop();
+      updateButtonStates();
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

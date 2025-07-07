@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON 生成工具</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 自定义配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6', // 主色调：蓝色
+            secondary: '#10B981', // 辅助色：绿色（添加按钮）
+            danger: '#EF4444', // 危险色：红色（删除按钮）
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .backdrop-blur-sm {
+        backdrop-filter: blur(4px);
+      }
+      .glass-effect {
+        @apply bg-white/80 dark:bg-black/60 backdrop-blur-sm;
+      }
+      .input-focus {
+        @apply focus:ring-2 focus:ring-primary/50 focus:border-primary transition duration-200;
+      }
+      .btn-hover {
+        @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+  <!-- 背景图片容器 -->
+  <div id="bg-container" class="fixed inset-0 z-0">
+    <img src="assets/images/local-background.png" alt="背景图" class="w-full h-full object-cover opacity-30 blur-sm">
+  </div>
+
+  <!-- 主容器 -->
+  <div class="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-4xl glass-effect rounded-xl shadow-xl p-6 md:p-8">
+      <!-- 标题 -->
+      <div class="text-center mb-8">
+        <h1 class="text-[clamp(1.75rem,4vw,2.5rem)] font-bold text-gray-800 dark:text-white">
+          探险者指南针结构汉化生成工具
+        </h1>
+        <p class="text-gray-600 dark:text-gray-300 mt-2 text-[clamp(0.875rem,1.5vw,1rem)]">
+           By 奕暃
+        </p>
+      </div>
+
+      <!-- 模组容器 -->
+      <div id="mods-container">
+        <!-- 初始模组 -->
+        <div class="mod-container bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+          <!-- 模组名输入 -->
+          <div class="mb-6">
+            <label for="mod-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              模组名 <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="mod-name w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white input-focus"
+                   placeholder="请输入模组名">
+          </div>
+
+          <!-- 建筑信息区域 -->
+          <div class="mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+              建筑信息 <span class="text-danger">*</span>
+            </h2>
+            
+            <div class="buildings-container space-y-3">
+              <!-- 初始建筑行 -->
+              <div class="building-row bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 flex flex-wrap gap-3 items-center">
+                <div class="w-full md:w-1/2">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    建筑名
+                  </label>
+                  <input type="text" class="building-name w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white input-focus"
+                         placeholder="请输入建筑名">
+                </div>
+                <div class="w-full md:w-1/2">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    翻译后的建筑名
+                  </label>
+                  <input type="text" class="translated-name w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white input-focus"
+                         placeholder="请输入翻译后的建筑名">
+                </div>
+                <button type="button" class="remove-btn text-danger hover:text-danger/80 transition-colors">
+                  <i class="fa fa-trash-o text-lg"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- 添加建筑按钮 -->
+            <button class="add-building mt-3 flex items-center gap-2 text-secondary hover:text-secondary/80 transition-colors">
+              <i class="fa fa-plus-circle"></i>
+              <span>添加建筑</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 添加模组按钮 -->
+      <button id="add-mod" class="mt-3 flex items-center gap-2 text-secondary hover:text-secondary/80 transition-colors">
+        <i class="fa fa-plus-circle"></i>
+        <span>添加模组</span>
+      </button>
+
+      <!-- 生成按钮 -->
+      <button id="generate-json" 
+              class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg btn-hover mt-6">
+        <i class="fa fa-download mr-2"></i>
+        生成 zh_cn.json 文件
+      </button>
+
+      <!-- 结果区域 -->
+      <div id="result-container" class="hidden bg-green-50 dark:bg-green-900/30 rounded-lg p-6 border border-green-200 dark:border-green-700 mt-6">
+        <h3 class="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
+          <i class="fa fa-check-circle mr-2"></i>
+          文件生成成功
+        </h3>
+        <p class="text-green-700 dark:text-green-300 mb-4">
+          点击下方链接下载生成的 JSON 文件：
+        </p>
+        <a id="download-link" href="#" class="inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg btn-hover">
+          <i class="fa fa-file-text-o mr-2"></i>
+          下载 zh_cn.json
+        </a>
+      </div>
+    </div>
+
+    <!-- 刷新按钮 -->
+    <button id="refresh-page" class="mt-8 bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg btn-hover">
+      <i class="fa fa-refresh mr-2"></i>
+      刷新页面
+    </button>
+
+    <!-- 页脚 -->
+    <footer class="mt-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+      <p>© 2025 栖拓工坊所有  JSON 生成工具 | 按 <kbd class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-xs">F5</kbd> 刷新页面</p>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // 示例模板（实际使用时会从用户上传的文件解析）
+    const DEFAULT_TEMPLATE = {
+      "_comment": "模组名",
+      "structure.模组名.建筑名": "AAA[模组名]翻译后的建筑名"
+    };
+
+    // DOM 元素
+    const modsContainer = document.getElementById('mods-container');
+    const addModBtn = document.getElementById('add-mod');
+    const generateBtn = document.getElementById('generate-json');
+    const resultContainer = document.getElementById('result-container');
+    const downloadLink = document.getElementById('download-link');
+    const refreshBtn = document.getElementById('refresh-page');
+
+    // 添加新的模组区域
+    addModBtn.addEventListener('click', () => {
+      const newMod = document.createElement('div');
+      newMod.className = 'mod-container bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6';
+      newMod.innerHTML = `
+        <!-- 模组名输入 -->
+        <div class="mb-6">
+          <label for="mod-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            模组名 <span class="text-danger">*</span>
+          </label>
+          <input type="text" class="mod-name w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white input-focus"
+                 placeholder="请输入模组名">
+        </div>
+
+        <!-- 建筑信息区域 -->
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+            建筑信息 <span class="text-danger">*</span>
+          </h2>
+          
+          <div class="buildings-container space-y-3">
+            <!-- 初始建筑行 -->
+            <div class="building-row bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 flex flex-wrap gap-3 items-center">
+              <div class="w-full md:w-1/2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  建筑名
+                </label>
+                <input type="text" class="building-name w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white input-focus"
+                       placeholder="请输入建筑名">
+              </div>
+              <div class="w-full md:w-1/2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  翻译后的建筑名
+                </label>
+                <input type="text" class="translated-name w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white input-focus"
+                       placeholder="请输入翻译后的建筑名">
+              </div>
+              <button type="button" class="remove-btn text-danger hover:text-danger/80 transition-colors">
+                <i class="fa fa-trash-o text-lg"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 添加建筑按钮 -->
+          <button class="add-building mt-3 flex items-center gap-2 text-secondary hover:text-secondary/80 transition-colors">
+            <i class="fa fa-plus-circle"></i>
+            <span>添加建筑</span>
+          </button>
+        </div>
+      `;
+
+      // 添加添加建筑功能
+      newMod.querySelector('.add-building').addEventListener('click', () => {
+        const buildingsContainer = newMod.querySelector('.buildings-container');
+        const newRow = document.createElement('div');
+        newRow.className = 'building-row bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 flex flex-wrap gap-3 items-center';
+        newRow.innerHTML = `
+          <div class="w-full md:w-1/2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              建筑名
+            </label>
+            <input type="text" class="building-name w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white input-focus"
+                   placeholder="请输入建筑名">
+          </div>
+          <div class="w-full md:w-1/2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              翻译后的建筑名
+            </label>
+            <input type="text" class="translated-name w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white input-focus"
+                   placeholder="请输入翻译后的建筑名">
+          </div>
+          <button type="button" class="remove-btn text-danger hover:text-danger/80 transition-colors">
+            <i class="fa fa-trash-o text-lg"></i>
+          </button>
+        `;
+
+        // 添加删除功能
+        newRow.querySelector('.remove-btn').addEventListener('click', () => {
+          // 至少保留一行
+          if (buildingsContainer.querySelectorAll('.building-row').length > 1) {
+            newRow.remove();
+          } else {
+            // 清空输入但不删除
+            newRow.querySelectorAll('input').forEach(input => input.value = '');
+            showNotification('至少保留一行建筑信息', 'warning');
+          }
+        });
+
+        buildingsContainer.appendChild(newRow);
+        // 聚焦到新添加的建筑名输入框
+        newRow.querySelector('.building-name').focus();
+      });
+
+      // 添加删除按钮事件委托
+      newMod.querySelector('.buildings-container').addEventListener('click', (e) => {
+        if (e.target.closest('.remove-btn') && newMod.querySelectorAll('.building-row').length > 1) {
+          e.target.closest('.building-row').remove();
+        }
+      });
+
+      modsContainer.appendChild(newMod);
+      // 聚焦到新添加的模组名输入框
+      newMod.querySelector('.mod-name').focus();
+    });
+
+    // 生成 JSON 文件
+    generateBtn.addEventListener('click', () => {
+      const modContainers = document.querySelectorAll('.mod-container');
+      const allModData = [];
+
+      modContainers.forEach((modContainer, modIndex) => {
+        const modName = modContainer.querySelector('.mod-name').value.trim();
+        const buildingRows = modContainer.querySelectorAll('.building-row');
+
+        // 验证模组名
+        if (!modName) {
+          showNotification(`第 ${modIndex + 1} 个模组名不能为空`, 'error');
+          modContainer.querySelector('.mod-name').focus();
+          return;
+        }
+
+        // 验证建筑信息
+        const buildingData = [];
+        let isValid = true;
+
+        buildingRows.forEach((row, index) => {
+          const buildingName = row.querySelector('.building-name').value.trim();
+          const translatedName = row.querySelector('.translated-name').value.trim();
+
+          if (!buildingName || !translatedName) {
+            isValid = false;
+            showNotification(`第 ${modIndex + 1} 个模组的第 ${index + 1} 行建筑信息不完整`, 'error');
+            row.querySelector('input').focus();
+            return;
+          }
+
+          buildingData.push({ buildingName, translatedName });
+        });
+
+        if (!isValid) return;
+
+        // 缓存模组信息
+        const modData = { modName, buildingData };
+        allModData.push(modData);
+        localStorage.setItem(`mod_${modIndex}`, JSON.stringify(modData));
+      });
+
+      if (allModData.length === 0) return;
+
+      // 解析模板并生成 JSON
+      try {
+        const resultJSON = generateJSONFromAllMods(allModData);
+        const blob = new Blob([JSON.stringify(resultJSON, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        // 更新下载链接
+        downloadLink.href = url;
+        downloadLink.download = 'zh_cn.json';
+
+        // 显示结果区域
+        resultContainer.classList.remove('hidden');
+
+        // 滚动到结果区域
+        resultContainer.scrollIntoView({ behavior: 'smooth' });
+
+        showNotification('JSON 文件生成成功', 'success');
+      } catch (error) {
+        showNotification(`生成失败: ${error.message}`, 'error');
+      }
+    });
+
+    // 从所有模组数据生成 JSON
+    function generateJSONFromAllMods(allModData) {
+      const result = {};
+
+      allModData.forEach(({ modName, buildingData }) => {
+        // 实际项目中应从文件加载模板，这里使用默认模板
+        const template = DEFAULT_TEMPLATE;
+
+        // 提取模板格式
+        const commentTemplate = template['_comment'] || '';
+        const structureKeys = Object.keys(template).filter(key => key.startsWith('structure.'));
+
+        if (!structureKeys.length) {
+          throw new Error('模板中未找到 structure. 开头的键');
+        }
+
+        // 使用第一个 structure 键作为模板
+        const structureKeyTemplate = structureKeys[0];
+        const structureValueTemplate = template[structureKeyTemplate];
+
+        // 添加注释
+        result[`_comment_${modName}`] = commentTemplate.replace('模组名', modName);
+
+        // 添加所有建筑信息
+        buildingData.forEach(({ buildingName, translatedName }) => {
+          const newKey = structureKeyTemplate
+            .replace('模组名', modName)
+            .replace('建筑名', buildingName);
+
+          const newValue = structureValueTemplate
+            .replace('模组名', modName)
+            .replace('翻译后的建筑名', translatedName);
+
+          result[newKey] = newValue;
+        });
+      });
+
+      return result;
+    }
+
+    // 显示通知
+    function showNotification(message, type = 'info') {
+      // 检查是否已存在通知元素
+      let notification = document.getElementById('notification');
+      if (notification) notification.remove();
+
+      // 创建新通知元素
+      notification = document.createElement('div');
+      notification.id = 'notification';
+
+      // 设置样式和内容
+      let bgColor, textColor, icon;
+      switch (type) {
+        case 'success':
+          bgColor = 'bg-green-500';
+          textColor = 'text-white';
+          icon = 'fa-check-circle';
+          break;
+        case 'error':
+          bgColor = 'bg-red-500';
+          textColor = 'text-white';
+          icon = 'fa-exclamation-circle';
+          break;
+        case 'warning':
+          bgColor = 'bg-yellow-500';
+          textColor = 'text-white';
+          icon = 'fa-exclamation-triangle';
+          break;
+        default:
+          bgColor = 'bg-blue-500';
+          textColor = 'text-white';
+          icon = 'fa-info-circle';
+      }
+
+      notification.className = `${bgColor} ${textColor} fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2 transform transition-all duration-300 opacity-0 translate-y-[-20px]`;
+      notification.innerHTML = `
+        <i class="fa ${icon}"></i>
+        <span>${message}</span>
+      `;
+
+      // 添加到页面
+      document.body.appendChild(notification);
+
+      // 显示动画
+      setTimeout(() => {
+        notification.classList.remove('opacity-0', 'translate-y-[-20px]');
+      }, 10);
+
+      // 自动关闭
+      setTimeout(() => {
+        notification.classList.add('opacity-0', 'translate-y-[-20px]');
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+
+    // 刷新页面按钮
+    refreshBtn.addEventListener('click', () => {
+      location.reload();
+    });
+
+    // 深色/浅色模式切换（根据系统设置）
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+    
+    // 监听系统主题变化
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      document.documentElement.classList.toggle('dark', e.matches);
+    });
+  </script>
+</body>
+</html>
